@@ -63,10 +63,10 @@ EMSCRIPTEN_KEEPALIVE void tsugaru_key_event(int key, int down)
 	}
 }
 
-}
-
-int main(int argc, char *argv[])
+EMSCRIPTEN_KEEPALIVE int main(int argc, char *argv[])
 {
 	tsugaru_init();
 	return 0;
+}
+
 }
