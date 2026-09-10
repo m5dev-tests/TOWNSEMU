@@ -142,6 +142,9 @@ void FsMaximizeWindow(void) {}
 void FsUnmaximizeWindow(void) {}
 void FsMakeFullScreen(void) {}
 
+void FsResizeWindow(int newWid, int newHei) {}
+int FsCheckWindowOpen(void) { return (glContext > 0 ? 1 : 0); }
+
 void FsGetWindowSize(int &wid, int &hei)
 {
 	wid = 800;
