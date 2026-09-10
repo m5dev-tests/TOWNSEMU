@@ -15,7 +15,11 @@ else()
 	set(LIB_DEPENDENCY)
 endif()
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore")
+if(EMSCRIPTEN)
+	set(platform_SRCS
+		emscripten/fssimplewindow_emscripten.cpp
+	)
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore")
 	set(platform_SRCS
 		uwp/fsuwpwrapper.cpp
 	)
