@@ -2,7 +2,12 @@
 
 
 
-if(MSVC)
+if(EMSCRIPTEN)
+	set(DUMMY_LIBRARY_NAME yssimplesound_emscripten)
+	set(SUBDIR emscripten)
+	set(SRCS ${SUBDIR}/yssimplesound_emscripten.cpp)
+	set(LIBS "")
+elseif(MSVC)
 	set(DUMMY_LIBRARY_NAME yssimplesound_dsound)
 	set(SUBDIR windows_dsound)
 	set(SRCS ${SUBDIR}/yssimplesound_dsound.cpp)
