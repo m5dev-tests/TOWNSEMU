@@ -4,11 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tsugaru WASM</title>
+    <style>
+        #dropzone {
+            border: 2px dashed #888;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 10px 0;
+            background-color: #f9f9f9;
+            color: #333;
+            font-family: sans-serif;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        #dropzone.hover {
+            background-color: #e0f0ff;
+            border-color: #0066cc;
+        }
+    </style>
 </head>
 <body>
     <h1>Tsugaru WASM</h1>
     <div id="status">Loading Tsugaru WASM...</div>
     <div id="dimensions">Canvas Dimensions: 0 x 0</div>
+    <div id="dropzone">
+        Drag &amp; Drop .ISO file here to load CD and restart
+    </div>
     <br>
     <canvas id="offscreen" width="640" height="480" style="display:none;"></canvas>
     <canvas id="canvas" width="640" height="480" tabIndex="-1"></canvas>
@@ -19,6 +41,7 @@
         };
 
         var isRendering = false;
+        var frameCount = 0;
 
         function startRenderLoop() {
             if (isRendering) return;
@@ -47,6 +70,23 @@
                             var pixels = new Uint8ClampedArray(Module.HEAPU8.buffer, fbPtr, width * height * 4);
                             imgData.data.set(pixels);
                             ctx.putImageData(imgData, 0, 0);
+
+                            frameCount++;
+
+                            var hasNonZeroPixels = false;
+                            for (var i = 0; i < pixels.length; i += 4) {
+                                if (pixels[i] !== 0 || pixels[i+1] !== 0 || pixels[i+2] !== 0) {
+                                    hasNonZeroPixels = true;
+                                    break;
+                                }
+                            }
+
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                            ctx.fillRect(10, 10, 240, 50);
+                            ctx.fillStyle = '#00ff00';
+                            ctx.font = '14px monospace';
+                            ctx.fillText("Frame: " + frameCount, 20, 30);
+                            ctx.fillText("Non-zero pixels: " + (hasNonZeroPixels ? "YES" : "NO"), 20, 48);
                         }
                     }
                 }
@@ -62,6 +102,71 @@
                 Module.ccall('tsugaru_init', null, [], []);
             }
             startRenderLoop();
+        }
+
+        function handleISOFile(file) {
+            if (!file) return;
+            var status = document.getElementById('status');
+            if (status) status.innerText = "Reading ISO file: " + file.name + "...";
+
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var arrayBuffer = e.target.result;
+                    var data = new Uint8Array(arrayBuffer);
+
+                    if (typeof Module !== 'undefined' && Module.FS) {
+                        try {
+                            Module.FS.mkdir('/cd');
+                        } catch(err) {}
+                        Module.FS.writeFile('/cd/game.iso', data);
+
+                        if (status) status.innerText = "ISO written to /cd/game.iso. Restarting VM with CD...";
+
+                        if (Module._tsugaru_restart_with_cd || (Module.ccall)) {
+                            Module.ccall('tsugaru_restart_with_cd', null, ['string'], ['/cd/game.iso']);
+                        } else {
+                            if (status) status.innerText = "Error: _tsugaru_restart_with_cd not exported";
+                        }
+                    } else {
+                        if (status) status.innerText = "Error: Module.FS not available";
+                    }
+                } catch(err) {
+                    console.error("Error processing ISO file:", err);
+                    if (status) status.innerText = "Error processing ISO file: " + err.message;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function setupDragAndDrop() {
+            var dropzone = document.getElementById('dropzone');
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(eventName) {
+                document.addEventListener(eventName, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(function(eventName) {
+                dropzone.addEventListener(eventName, function() {
+                    dropzone.classList.add('hover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(function(eventName) {
+                dropzone.addEventListener(eventName, function() {
+                    dropzone.classList.remove('hover');
+                }, false);
+            });
+
+            document.addEventListener('drop', function(e) {
+                var dt = e.dataTransfer;
+                if (dt && dt.files && dt.files.length > 0) {
+                    handleISOFile(dt.files[0]);
+                }
+            }, false);
         }
 
         var Module = {
@@ -82,6 +187,7 @@
             onRuntimeInitialized: function() {
                 console.log('onRuntimeInitialized fired!');
                 tsugaru_init();
+                setupDragAndDrop();
                 var status = document.getElementById('status');
                 if (status) status.innerText = "Tsugaru WASM loaded!";
             }
