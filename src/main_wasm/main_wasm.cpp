@@ -141,6 +141,19 @@ EMSCRIPTEN_KEEPALIVE void tsugaru_key_event(int key, int down)
 	}
 }
 
+EMSCRIPTEN_KEEPALIVE void tsugaru_restart_with_cd(const char *path)
+{
+	if (g_towns == nullptr) {
+		tsugaru_init();
+	}
+	if (g_towns != nullptr) {
+		if (path != nullptr && path[0] != '\0') {
+			g_towns->cdrom.LoadDiscImage(path);
+		}
+		g_towns->Reset(BOOT_KEYCOMB_CD);
+	}
+}
+
 EMSCRIPTEN_KEEPALIVE int main(int argc, char *argv[])
 {
 	tsugaru_init();
