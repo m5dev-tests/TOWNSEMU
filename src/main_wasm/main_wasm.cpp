@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <exception>
+#include <algorithm>
 #include <emscripten.h>
 
 #include "towns.h"
@@ -39,6 +40,7 @@ static void wasm_main_loop(void)
 			g_towns->RunFastDevicePolling();
 		}
 
+		g_towns->timer.TimerPolling(g_towns->state.townsTime);
 		g_towns->ProcessSound(g_outside_world);
 		g_towns->cdrom.UpdateCDDAState(g_towns->state.townsTime);
 		g_outside_world->ProcessAppSpecific(*g_towns);
@@ -56,13 +58,33 @@ static void wasm_main_loop(void)
 		g_towns->ForceRender(render, *g_outside_world, *g_window);
 		g_window->Render(true);
 
-		if (g_window->winThr.mostRecentImage.wid > 0 && g_window->winThr.mostRecentImage.hei > 0) {
-			g_fb_width = g_window->winThr.mostRecentImage.wid;
-			g_fb_height = g_window->winThr.mostRecentImage.hei;
-			g_framebuffer = g_window->winThr.mostRecentImage.rgba;
-			for (size_t i = 3; i < g_framebuffer.size(); i += 4) {
-				g_framebuffer[i] = 255;
-			}
+		auto &img = g_window->winThr.mostRecentImage;
+		std::cout << "[FRAME] Dimensions: " << img.wid << "x" << img.hei << std::endl;
+		if (img.rgba.size() >= 4) {
+			std::cout << "[FRAME] First pixel RGBA: ("
+			          << (int)img.rgba[0] << ", "
+			          << (int)img.rgba[1] << ", "
+			          << (int)img.rgba[2] << ", "
+			          << (int)img.rgba[3] << ")" << std::endl;
+		}
+
+		if (img.wid > 0 && img.hei > 0) {
+			g_fb_width = img.wid;
+			g_fb_height = img.hei;
+		}
+
+		size_t target_size = g_fb_width * g_fb_height * 4;
+		if (g_framebuffer.size() != target_size) {
+			g_framebuffer.resize(target_size, 0);
+		}
+
+		if (!img.rgba.empty()) {
+			size_t copy_size = std::min(target_size, img.rgba.size());
+			std::copy(img.rgba.begin(), img.rgba.begin() + copy_size, g_framebuffer.begin());
+		}
+
+		for (size_t i = 3; i < g_framebuffer.size(); i += 4) {
+			g_framebuffer[i] = 255;
 		}
 	}
 }
@@ -88,6 +110,48 @@ EMSCRIPTEN_KEEPALIVE int tsugaru_get_fb_width()
 EMSCRIPTEN_KEEPALIVE int tsugaru_get_fb_height()
 {
 	return g_fb_height;
+}
+
+EMSCRIPTEN_KEEPALIVE const char* tsugaru_get_debug_info()
+{
+	static std::string info;
+	std::string runModeStr = "stopped";
+	if (g_townsThread) {
+		int mode = g_townsThread->GetRunMode();
+		switch (mode) {
+		case TownsThread::RUNMODE_RUN: runModeStr = "running"; break;
+		case TownsThread::RUNMODE_PAUSE: runModeStr = "paused"; break;
+		case TownsThread::RUNMODE_POWER_OFF: runModeStr = "power_off"; break;
+		case TownsThread::RUNMODE_ONE_INSTRUCTION: runModeStr = "one_instruction"; break;
+		case TownsThread::RUNMODE_EXIT: runModeStr = "exit"; break;
+		default: runModeStr = "unknown"; break;
+		}
+	}
+
+	std::string crtcStatus = "CRTC not initialized";
+	if (g_towns) {
+		crtcStatus = "HighRes: " + std::string(g_towns->crtc.state.highResCRTCEnabled ? "yes" : "no");
+		crtcStatus += ", SinglePage: " + std::string(g_towns->crtc.InSinglePageMode() ? "yes" : "no");
+		crtcStatus += ", ShowPage0: " + std::string(g_towns->crtc.state.ShowPage(0) ? "yes" : "no");
+		crtcStatus += ", ShowPage1: " + std::string(g_towns->crtc.state.ShowPage(1) ? "yes" : "no");
+		auto renderSize = g_towns->crtc.GetRenderSize();
+		crtcStatus += ", Size: " + std::to_string(renderSize.x()) + "x" + std::to_string(renderSize.y());
+	}
+
+	bool videoInit = (g_towns != nullptr && g_window != nullptr && g_fb_width > 0 && g_fb_height > 0 && !g_framebuffer.empty());
+
+	info = "VM Run Mode: " + runModeStr + "\n";
+	info += "CRTC Status: " + crtcStatus + "\n";
+	info += "Video Initialized: " + std::string(videoInit ? "yes" : "no") + "\n";
+	info += "Framebuffer Size: " + std::to_string(g_fb_width) + "x" + std::to_string(g_fb_height) + "\n";
+	if (g_framebuffer.size() >= 4) {
+		info += "First Pixel RGBA: (" + std::to_string((int)g_framebuffer[0]) + ", "
+		                              + std::to_string((int)g_framebuffer[1]) + ", "
+		                              + std::to_string((int)g_framebuffer[2]) + ", "
+		                              + std::to_string((int)g_framebuffer[3]) + ")\n";
+	}
+
+	return info.c_str();
 }
 
 EMSCRIPTEN_KEEPALIVE void tsugaru_init()
