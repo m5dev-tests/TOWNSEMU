@@ -41,6 +41,7 @@ const uint32_t FMT3631::defPalette[256]=
 
 FMT3631::FMT3631(class FMTownsCommon *ptr) : Device(ptr)
 {
+	std::cout << "[fmt3631] Constructor" << std::endl;
 	state.vram.clear();
 	mutableThis=this;
 }

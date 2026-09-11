@@ -468,14 +468,14 @@ public:
 	TownsRTC rtc;
 	TownsDMAC dmac;
 	TownsCDROM cdrom;
+	TownsSound sound;
 	TownsPhysicalMemory physMem;
-	TownsCRTC crtc;
 	FMT3631 fmt3631;
 	TownsSprite sprite;
+	TownsCRTC crtc;
 	TownsFDC fdc;
 	TownsSCSI scsi;
 	TownsKeyboard keyboard;
-	TownsSound sound;
 	TownsMIDI midi;
 	TownsGamePort gameport;
 	TownsTimer timer;

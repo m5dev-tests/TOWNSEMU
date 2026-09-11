@@ -22,6 +22,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 TownsFDC::TownsFDC(class FMTownsCommon *townsPtr,class TownsPIC *PICPtr,class TownsDMAC *DMACPtr) : DiskDrive(townsPtr)
 {
+	std::cout << "[fdc] Constructor" << std::endl;
 	this->townsPtr=townsPtr;
 	this->PICPtr=PICPtr;
 	this->DMACPtr=DMACPtr;

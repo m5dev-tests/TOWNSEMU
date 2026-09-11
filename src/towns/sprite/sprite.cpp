@@ -41,6 +41,7 @@ void TownsSprite::State::Reset(void)
 
 TownsSprite::TownsSprite(class FMTownsCommon *townsPtr,TownsPhysicalMemory *physMemPtr) : Device(townsPtr)
 {
+	std::cout << "[sprite] Constructor" << std::endl;
 	this->townsPtr=townsPtr;
 	this->physMemPtr=physMemPtr;
 }

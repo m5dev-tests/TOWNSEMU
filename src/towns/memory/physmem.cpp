@@ -349,6 +349,7 @@ TownsPhysicalMemory::TownsPhysicalMemory(class FMTownsCommon *townsPtr,class Mem
 	oldMemCardAccess(townsPtr),
 	JEIDA4MemCardAccess(townsPtr)
 {
+	std::cout << "[physMem] Constructor" << std::endl;
 	this->townsPtr=townsPtr;
 
 	takeJISCodeLog=false;

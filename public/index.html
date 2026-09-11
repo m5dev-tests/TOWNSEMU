@@ -8,40 +8,79 @@
 <body>
     <h1>Tsugaru WASM</h1>
     <div id="status">Loading Tsugaru WASM...</div>
+    <div id="dimensions">Canvas Dimensions: 0 x 0</div>
     <br>
+    <canvas id="offscreen" width="640" height="480" style="display:none;"></canvas>
     <canvas id="canvas" width="640" height="480" tabIndex="-1"></canvas>
 
     <script>
+        window.onerror = function(msg, url, line, col, error) {
+            console.error('WINDOW ERROR:', msg, error ? error.stack : '');
+        };
+
+        var isRendering = false;
+
+        function startRenderLoop() {
+            if (isRendering) return;
+            isRendering = true;
+
+            function renderStep() {
+                if (typeof Module !== 'undefined' && Module._tsugaru_get_framebuffer && Module._tsugaru_get_fb_width && Module._tsugaru_get_fb_height) {
+                    var width = Module._tsugaru_get_fb_width();
+                    var height = Module._tsugaru_get_fb_height();
+                    var fbPtr = Module._tsugaru_get_framebuffer();
+
+                    var dimElem = document.getElementById('dimensions');
+                    if (dimElem) {
+                        dimElem.innerText = "Canvas Dimensions: " + width + " x " + height;
+                    }
+
+                    if (width > 0 && height > 0 && fbPtr) {
+                        var canvas = document.getElementById('canvas');
+                        if (canvas.width !== width || canvas.height !== height) {
+                            canvas.width = width;
+                            canvas.height = height;
+                        }
+                        var ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            var imgData = ctx.createImageData(width, height);
+                            var pixels = new Uint8ClampedArray(Module.HEAPU8.buffer, fbPtr, width * height * 4);
+                            imgData.data.set(pixels);
+                            ctx.putImageData(imgData, 0, 0);
+                        }
+                    }
+                }
+                requestAnimationFrame(renderStep);
+            }
+            requestAnimationFrame(renderStep);
+        }
+
         function tsugaru_init() {
             if (typeof Module !== 'undefined' && Module._tsugaru_init) {
                 Module._tsugaru_init();
             } else if (typeof Module !== 'undefined' && Module.ccall) {
                 Module.ccall('tsugaru_init', null, [], []);
             }
+            startRenderLoop();
         }
 
         var Module = {
             canvas: (function() {
-                var canvas = document.getElementById('canvas');
-                return canvas;
+                return document.getElementById('offscreen');
             })(),
             locateFile: function(path, prefix) {
-                if (path.endsWith('.wasm')) {
-                    return (prefix || '') + path;
-                }
                 return (prefix || '') + path;
             },
             print: function(text) {
-                console.log(text);
-                if (text && text.indexOf("Tsugaru WASM loaded") !== -1) {
-                    var status = document.getElementById('status');
-                    if (status) status.innerText = text;
-                }
+                console.log('PRINT:', text);
+                var status = document.getElementById('status');
+                if (status) status.innerText = text;
             },
             printErr: function(text) {
-                console.error(text);
+                console.error('PRINTERR:', text);
             },
             onRuntimeInitialized: function() {
+                console.log('onRuntimeInitialized fired!');
                 tsugaru_init();
                 var status = document.getElementById('status');
                 if (status) status.innerText = "Tsugaru WASM loaded!";
