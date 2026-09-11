@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tsugaru WASM</title>
+</head>
+<body>
+    <h1>Tsugaru WASM</h1>
+    <div id="status">Loading Tsugaru WASM...</div>
+    <br>
+    <canvas id="canvas" width="640" height="480" tabIndex="-1"></canvas>
+
+    <script>
+        function tsugaru_init() {
+            if (typeof Module !== 'undefined' && Module._tsugaru_init) {
+                Module._tsugaru_init();
+            } else if (typeof Module !== 'undefined' && Module.ccall) {
+                Module.ccall('tsugaru_init', null, [], []);
+            }
+        }
+
+        var Module = {
+            canvas: (function() {
+                var canvas = document.getElementById('canvas');
+                return canvas;
+            })(),
+            locateFile: function(path, prefix) {
+                if (path.endsWith('.wasm')) {
+                    return (prefix || '') + path;
+                }
+                return (prefix || '') + path;
+            },
+            print: function(text) {
+                console.log(text);
+                if (text && text.indexOf("Tsugaru WASM loaded") !== -1) {
+                    var status = document.getElementById('status');
+                    if (status) status.innerText = text;
+                }
+            },
+            printErr: function(text) {
+                console.error(text);
+            },
+            onRuntimeInitialized: function() {
+                tsugaru_init();
+                var status = document.getElementById('status');
+                if (status) status.innerText = "Tsugaru WASM loaded!";
+            }
+        };
+    </script>
+    <script src="Tsugaru_WASM.js"></script>
+</body>
+</html>
