@@ -73,6 +73,9 @@ EMSCRIPTEN_KEEPALIVE uint8_t* tsugaru_get_framebuffer()
 {
 	if (g_framebuffer.empty()) {
 		g_framebuffer.resize(g_fb_width * g_fb_height * 4, 0);
+		for (size_t i = 3; i < g_framebuffer.size(); i += 4) {
+			g_framebuffer[i] = 255;
+		}
 	}
 	return g_framebuffer.data();
 }

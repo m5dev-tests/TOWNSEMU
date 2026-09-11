@@ -196,7 +196,7 @@ Module['FS_createPath']("/", "roms", true, true);
     }
 
     }
-    loadPackage({"files": [{"filename": "/roms/FMT_SYS.ROM", "start": 0, "end": 262144}, {"filename": "/roms/FMT_FNT.ROM", "start": 262144, "end": 524288}, {"filename": "/roms/FMT_DIC.ROM", "start": 524288, "end": 1048576}, {"filename": "/roms/FMT_F20.ROM", "start": 1048576, "end": 1572864}, {"filename": "/roms/FMT_DOS.ROM", "start": 1572864, "end": 2097152}, {"filename": "/roms/LICENSE.md", "start": 2097152, "end": 2102259}], "remote_package_size": 2102259, "package_uuid": "bb6c41b6-e91d-40f4-8a3d-f7045afc80da"});
+    loadPackage({"files": [{"filename": "/roms/FMT_SYS.ROM", "start": 0, "end": 262144}, {"filename": "/roms/FMT_FNT.ROM", "start": 262144, "end": 524288}, {"filename": "/roms/FMT_DIC.ROM", "start": 524288, "end": 1048576}, {"filename": "/roms/FMT_F20.ROM", "start": 1048576, "end": 1572864}, {"filename": "/roms/FMT_DOS.ROM", "start": 1572864, "end": 2097152}, {"filename": "/roms/LICENSE.md", "start": 2097152, "end": 2102259}], "remote_package_size": 2102259, "package_uuid": "e552802e-8fe4-4baa-aa1b-272400d25eb0"});
 
   })();
 

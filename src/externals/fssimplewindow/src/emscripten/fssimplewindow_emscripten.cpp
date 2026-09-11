@@ -91,8 +91,8 @@ extern "C" void FsPollOneEvent(void)
 {
 	static bool callbacksSet = false;
 	if (!callbacksSet) {
-		emscripten_set_keydown_callback("#canvas", nullptr, EM_TRUE, keydown_callback);
-		emscripten_set_keyup_callback("#canvas", nullptr, EM_TRUE, keyup_callback);
+		emscripten_set_keydown_callback("#offscreen", nullptr, EM_TRUE, keydown_callback);
+		emscripten_set_keyup_callback("#offscreen", nullptr, EM_TRUE, keyup_callback);
 		callbacksSet = true;
 	}
 	if (glContext > 0) {
