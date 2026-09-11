@@ -30,7 +30,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #ifdef _WIN32
 	#include <direct.h>
-	#define getcwd _getcwd
+	#define getgetcwd _getcwd
 #else
 	#include <unistd.h>
 #endif
@@ -644,18 +644,18 @@ std::string FMTownsCommon::Variable::ExpandFileName(std::string incoming) const
 FMTownsCommon::FMTownsCommon() : 
 	Device(this),
 	debugger(this),
+	sound(this),
 	physMem(this,&mem,&sound.state.rf5c68),
 	keyboard(this,&pic),
-	crtc(this,&sprite,&fmt3631),
 	fmt3631(this),
 	sprite(this,&physMem),
+	crtc(this,&sprite,&fmt3631),
 	pic(this),
 	dmac(this),
 	cdrom(this,&pic,&dmac),
 	fdc(this,&pic,&dmac),
 	scsi(this),
 	rtc(this),
-	sound(this),
 	midi(this),
 	gameport(this),
 	timer(this,&pic),
@@ -666,20 +666,15 @@ FMTownsCommon::FMTownsCommon() :
 	highResPCM(this),
 	rex3586(this)
 {
-	/* Memo to myself:
-	To instantiate high-fidelity VM and default-fidelity VM in the same executable
-	without making RunOneInstruction virtual, CPU class is in the sub-class.
-	Therefore, CPU is not ready until sub-class is ready, which is not yet at this line.
-	Any initialization, including caching CPU pointer using CPU() function, needs to
-	wait until the sub-class constructor.
-	*/
-
+	std::cout << "[FMTownsCommon] Body start" << std::endl;
 	townsType=TOWNSTYPE_2_MX;
 
+	std::cout << "[FMTownsCommon] Step 1" << std::endl;
 	debugger.ioLabel=FMTownsIOMap();
 	debugger.GetSymTable().MakeDOSIntFuncLabel();
 	MakeINTInfo(debugger.GetSymTable());
 
+	std::cout << "[FMTownsCommon] Step 2" << std::endl;
 	allDevices.push_back(this);
 	allDevices.push_back(&pic);
 	allDevices.push_back(&dmac);
@@ -703,8 +698,10 @@ FMTownsCommon::FMTownsCommon() :
 	allDevices.push_back(&fmt3631);
 	VMBase::CacheDeviceIndex();
 
+	std::cout << "[FMTownsCommon] Step 3" << std::endl;
 	physMem.SetMainRAMSize(4*1024*1024);
 
+	std::cout << "[FMTownsCommon] Step 4" << std::endl;
 	physMem.SetVRAMSize(TOWNS_VRAM_SIZE);
 	physMem.SetCVRAMSize(TOWNS_CVRAM_SIZE);
 	physMem.SetSpriteRAMSize(TOWNS_SPRITERAM_SIZE);
@@ -714,327 +711,13 @@ FMTownsCommon::FMTownsCommon() :
 		physMem.state.CMOSRAM[i]=defCMOS[i];
 	}
 
+	std::cout << "[FMTownsCommon] Step 5" << std::endl;
 	physMem.FMRVRAMAccess.townsPtr=this;
 	physMem.FMRVRAMAccess.crtcPtr=&this->crtc;
 
-	// Free-run counter since FM TOWNS 2UG [2] pp.801
-	// Didn't it exist since the first model FM TOWNS 2?
-	// I vaguely rember I used something similar when I wrote my first flight simulator 
-	// submitted to Japan National High School Students' Programming Contest.
-	// FM TOWNS 2UG didn't exist then.
-	// I'm positive that I was using the second-generation FM TOWNS then.
-	// I'll check if I can find the source code from my old backups.
-
-	// Do range I/O mapping first, then do single I/O mapping.
-	// Range I/O mapping may wipe single I/O mapping.
-
-	// Range I/O mappings >>>
-	io.AddDevice(this,TOWNSIO_CPU_MISC3/*0x24*/);
-	io.AddDevice(this,TOWNSIO_FREERUN_TIMER_LOW/*0x26*/,TOWNSIO_MACHINE_ID_HIGH/*0x31*/);
-	io.AddDevice(&crtc,TOWNSIO_MX_HIRES/*0x470*/,TOWNSIO_MX_IMGOUT_D3/*0x477*/);
-	io.AddDevice(&keyboard,TOWNSIO_KEYBOARD_DATA/*0x600*/,TOWNSIO_KEYBOARD_IRQ/*0x604*/);
-	io.AddDevice(&fdc,TOWNSIO_FDC_STATUS_COMMAND/*0x200*/,TOWNSIO_FDC_DRIVE_SWITCH/*0x20E*/);
-	io.AddDevice(&physMem,TOWNSIO_CMOS_BASE,TOWNSIO_CMOS_END-1);
-
-
-	// Individual I/O mappings >>>
-	io.AddDevice(&scsi,TOWNSIO_SCSI_DATA);           // 0xC30 [2] pp.263
-	io.AddDevice(&scsi,TOWNSIO_SCSI_STATUS_CONTROL); // 0xC32 [2] pp.262
-	io.AddDevice(&scsi,TOWNSIO_SCSI_WORD_TFR_AVAIL); // 0xC34 [2] pp.801
-
-
-	io.AddDevice(&crtc,TOWNSIO_CRTC_ADDRESS);//             0x440,
-	io.AddDevice(&crtc,TOWNSIO_CRTC_DATA_LOW);//            0x442,
-	io.AddDevice(&crtc,TOWNSIO_CRTC_DATA_HIGH);//           0x443,
-	io.AddDevice(&crtc,TOWNSIO_HSYNC_VSYNC);//              0xFDA0,
-	io.AddDevice(&crtc,TOWNSIO_FMR_HSYNC_VSYNC);//          0xFF86
-	io.AddDevice(&crtc,TOWNSIO_VIDEO_OUT_CTRL_ADDRESS);//   0x448,
-	io.AddDevice(&crtc,TOWNSIO_VIDEO_OUT_CTRL_DATA);//      0x44A,
-	io.AddDevice(&crtc,TOWNSIO_DPMD_SPRITEBUSY_SPRITEPAGE); // 0x44C
-	io.AddDevice(&crtc,TOWNSIO_ANALOGPALETTE_CODE);//=  0xFD90,
-	io.AddDevice(&crtc,TOWNSIO_ANALOGPALETTE_BLUE);//=  0xFD92,
-	io.AddDevice(&crtc,TOWNSIO_ANALOGPALETTE_RED);//=   0xFD94,
-	io.AddDevice(&crtc,TOWNSIO_ANALOGPALETTE_GREEN);//= 0xFD96,
-	io.AddDevice(&crtc,TOWNSIO_FMR_DIGITALPALETTE0);// 0xFD98,
-	io.AddDevice(&crtc,TOWNSIO_FMR_DIGITALPALETTE1);// 0xFD99,
-	io.AddDevice(&crtc,TOWNSIO_FMR_DIGITALPALETTE2);// 0xFD9A,
-	io.AddDevice(&crtc,TOWNSIO_FMR_DIGITALPALETTE3);// 0xFD9B,
-	io.AddDevice(&crtc,TOWNSIO_FMR_DIGITALPALETTE4);// 0xFD9C,
-	io.AddDevice(&crtc,TOWNSIO_FMR_DIGITALPALETTE5);// 0xFD9D,
-	io.AddDevice(&crtc,TOWNSIO_FMR_DIGITALPALETTE6);// 0xFD9E,
-	io.AddDevice(&crtc,TOWNSIO_FMR_DIGITALPALETTE7);// 0xFD9F,
-	io.AddDevice(&crtc,TOWNSIO_WRITE_TO_CLEAR_VSYNCIRQ); // 0x5CA
-
-
-	io.AddDevice(this,TOWNSIO_POWER_CONTROL);   //        0x22
-	io.AddDevice(this,TOWNSIO_SERIAL_ROM_CTRL); //        0x32,
-	io.AddDevice(this,TOWNS_QUICK_DEBUG_BREAK); //        0xEA,  // Writing to this I/O port will break the VM.
-	io.AddDevice(this,TOWNS_QUICK_DEBUG_STATE); //        0xEB,  // Writing to this I/O port will show the VM state, not break.
-	io.AddDevice(this,TOWNSIO_FMR_RESOLUTION); // 0x400
-	io.AddDevice(this,TOWNSIO_VM_HOST_IF_CMD_STATUS);
-	io.AddDevice(this,TOWNSIO_VM_HOST_IF_DATA);
-	io.AddDevice(this,TOWNSIO_ELEVOL_1_DATA); //           0x4E0, // [2] pp.18, pp.174
-	io.AddDevice(this,TOWNSIO_ELEVOL_1_COM); //            0x4E1, // [2] pp.18, pp.174
-	io.AddDevice(this,TOWNSIO_ELEVOL_2_DATA); //           0x4E2, // [2] pp.18, pp.174
-	io.AddDevice(this,TOWNSIO_ELEVOL_2_COM); //            0x4E3, // [2] pp.18, pp.174
-	io.AddDevice(this,TOWNSIO_MAINRAM_WAIT_1STGEN); //     0x5E0,
-	io.AddDevice(this,TOWNSIO_MAINRAM_WAIT); //            0x5E2,
-	io.AddDevice(this,TOWNSIO_VRAMWAIT); //                0x5E6,
-	io.AddDevice(this,TOWNSIO_FASTMODE); //                0x5EC, // [2] pp.794
-	io.AddDevice(this,TOWNSIO_HOST_CONSOLE);  // 0xE9
-	io.AddDevice(this,TOWNSIO_STEAL_CONSOLE);  // 0xEC
-	io.AddDevice(this,TOWNSIO_STEAL_CONSOLE_DOS6);  // 0xED
-
-
-
-	io.AddDevice(&pic,TOWNSIO_PIC_PRIMARY_ICW1);//          0x00
-	io.AddDevice(&pic,TOWNSIO_PIC_PRIMARY_ICW2_3_4_OCW);//  0x02
-	io.AddDevice(&pic,TOWNSIO_PIC_SECONDARY_ICW1);//        0x10
-	io.AddDevice(&pic,TOWNSIO_PIC_SECONDARY_ICW2_3_4_OCW);//0x12
-
-
-	io.AddDevice(&dmac,TOWNSIO_DMAC_INITIALIZE);//          0xA0,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_CHANNEL);//             0xA1,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_COUNT_LOW);//           0xA2,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_COUNT_HIGH);//          0xA3,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_ADDRESS_LOWEST);//      0xA4,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_ADDRESS_MIDLOW);//      0xA5,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_ADDRESS_MIDHIGH);//     0xA6,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_ADDRESS_HIGHEST);//     0xA7,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_DEVICE_CONTROL_LOW);//  0xA8,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_DEVICE_CONTROL_HIGH);// 0xA9,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_MODE_CONTROL);//        0xAA,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_STATUS);//              0xAB,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_TEMPORARY_REG_LOW);//   0xAC,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_TEMPORARY_REG_HIGH);//  0xAD,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_REQUEST);//             0xAE,
-	io.AddDevice(&dmac,TOWNSIO_DMAC_MASK);//                0xAF,
-
-
-	io.AddDevice(this,TOWNSIO_RESET_REASON);
-	io.AddDevice(&physMem,TOWNSIO_FMR_VRAM_OR_MAINRAM);
-	io.AddDevice(&physMem,TOWNSIO_SYSROM_DICROM);
-	io.AddDevice(&physMem,TOWNSIO_DICROM_BANK);
-	io.AddDevice(&physMem,TOWNSIO_MEMSIZE);
-	io.AddDevice(&physMem,TOWNSIO_FMR_VRAMMASK);
-	io.AddDevice(&physMem,TOWNSIO_FMR_VRAMDISPLAYMODE);
-	io.AddDevice(&physMem,TOWNSIO_FMR_VRAMPAGESEL);
-	io.AddDevice(&physMem,TOWNSIO_TVRAM_WRITE);
-	io.AddDevice(&physMem,TOWNSIO_VRAMACCESSCTRL_ADDR); //      0x458, // [2] pp.17,pp.112
-	io.AddDevice(&physMem,TOWNSIO_VRAMACCESSCTRL_DATA_LOW); //  0x45A, // [2] pp.17,pp.112
-	io.AddDevice(&physMem,TOWNSIO_VRAMACCESSCTRL_DATA_HIGH); // 0x45B, // [2] pp.17,pp.112
-	io.AddDevice(&physMem,TOWNSIO_MEMCARD_STATUS); //           0x48A, // [2] pp.93
-	io.AddDevice(&physMem,TOWNSIO_MEMCARD_BANK); //             0x490, // [2] pp.794
-	io.AddDevice(&physMem,TOWNSIO_MEMCARD_ATTRIB); //           0x491, // [2] pp.795
-	io.AddDevice(&physMem,TOWNSIO_KANJI_JISCODE_HIGH);//  0xFF94,
-	io.AddDevice(&physMem,TOWNSIO_KANJI_JISCODE_LOW);//   0xFF95,
-	io.AddDevice(&physMem,TOWNSIO_KANJI_PTN_HIGH);//      0xFF96,
-	io.AddDevice(&physMem,TOWNSIO_KANJI_PTN_LOW);//       0xFF97,
-	io.AddDevice(&physMem,TOWNSIO_KVRAM_OR_ANKFONT);//    0xFF99,
-
-
-	io.AddDevice(&cdrom,TOWNSIO_CDROM_MASTER_CTRL_STATUS);
-	io.AddDevice(&cdrom,TOWNSIO_CDROM_COMMAND_STATUS);
-	io.AddDevice(&cdrom,TOWNSIO_CDROM_CACHE_2XSPEED);
-	io.AddDevice(&cdrom,TOWNSIO_CDROM_PARAMETER_DATA);
-	io.AddDevice(&cdrom,TOWNSIO_CDROM_TRANSFER_CTRL);
-	io.AddDevice(&cdrom,TOWNSIO_CDROM_SUBCODE_STATUS);
-	io.AddDevice(&cdrom,TOWNSIO_CDROM_SUBCODE_DATA);
-	io.AddDevice(&cdrom,TOWNSIO_CDROM_CAPS);
-
-
-	io.AddDevice(&rtc,TOWNSIO_RTC_DATA);//                 0x70,
-	io.AddDevice(&rtc,TOWNSIO_RTC_COMMAND);//              0x80,
-
-
-	io.AddDevice(&sprite,TOWNSIO_SPRITE_ADDRESS);//           0x450, // [2] pp.128
-	io.AddDevice(&sprite,TOWNSIO_SPRITE_DATA);//              0x452, // [2] pp.128
-
-
-	io.AddDevice(&gameport,TOWNSIO_GAMEPORT_A_INPUT);  //0x4D0,
-	io.AddDevice(&gameport,TOWNSIO_GAMEPORT_B_INPUT);  //0x4D2,
-	io.AddDevice(&gameport,TOWNSIO_GAMEPORT_OUTPUT);   //0x4D6,
-
-
-	io.AddDevice(&sound,TOWNSIO_SOUND_MUTE);//              0x4D5, // [2] pp.18,
-	io.AddDevice(&sound,TOWNSIO_SOUND_STATUS_ADDRESS0);//   0x4D8, // [2] pp.18,
-	io.AddDevice(&sound,TOWNSIO_SOUND_DATA0);//             0x4DA, // [2] pp.18,
-	io.AddDevice(&sound,TOWNSIO_SOUND_ADDRESS1);//          0x4DC, // [2] pp.18,
-	io.AddDevice(&sound,TOWNSIO_SOUND_DATA1);//             0x4DE, // [2] pp.18,
-	io.AddDevice(&sound,TOWNSIO_SOUND_INT_REASON);//        0x4E9, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_INT_MASK);//      0x4EA, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_INT);//           0x4EB, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_AUDIO);//             0x4EC, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_ENV);//           0x4F0, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_PAN);//           0x4F1, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_FDL);//           0x4F2, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_FDH);//           0x4F3, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_LSL);//           0x4F4, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_LSH);//           0x4F5, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_ST);//            0x4F6, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_CTRL);//          0x4F7, // [2] pp.19,
-	io.AddDevice(&sound,TOWNSIO_SOUND_PCM_CH_ON_OFF);//     0x4F8, // [2] pp.19,
-
-	io.AddDevice(&sound,TOWNSIO_SOUND_SAMPLING_DATA); //    0x4E7, // [2] pp.179,
-	io.AddDevice(&sound,TOWNSIO_SOUND_SAMPLING_FLAGS);//    0x4E8, // [2] pp.179,
-
-
-	io.AddDevice(&timer,TOWNSIO_TIMER0_COUNT);//             0x40,
-	io.AddDevice(&timer,TOWNSIO_TIMER1_COUNT);//             0x42,
-	io.AddDevice(&timer,TOWNSIO_TIMER2_COUNT);//             0x44,
-	io.AddDevice(&timer,TOWNSIO_TIMER_0_1_2_CTRL);//         0x46,
-	io.AddDevice(&timer,TOWNSIO_TIMER3_COUNT);//             0x50,
-	io.AddDevice(&timer,TOWNSIO_TIMER4_COUNT);//             0x52,
-	io.AddDevice(&timer,TOWNSIO_TIMER5_COUNT);//             0x54,
-	io.AddDevice(&timer,TOWNSIO_TIMER_3_4_5_CTRL);//         0x56,
-	io.AddDevice(&timer,TOWNSIO_TIMER_INT_CTRL_INT_REASON);
-
-	io.AddDevice(&serialport,TOWNSIO_RS232C_STATUS_COMMAND); // 0xA02, // [2] pp.269
-	io.AddDevice(&serialport,TOWNSIO_RS232C_DATA); //           0xA00, // [2] pp.274
-	io.AddDevice(&serialport,TOWNSIO_RS232C_STATUS2);
-	io.AddDevice(&serialport,TOWNSIO_RS232C_INT_REASON); //     0xA06, // [2] pp.275
-	io.AddDevice(&serialport,TOWNSIO_RS232C_INT_CONTROL); //    0xA08, // [2] pp.276
-
-	io.AddDevice(&serialport,TOWNSIO_COM1_STATUS_COMMAND);
-	io.AddDevice(&serialport,TOWNSIO_COM1_DATA);
-	io.AddDevice(&serialport,TOWNSIO_COM1_STATUS2);
-	io.AddDevice(&serialport,TOWNSIO_COM1_INT_REASON);
-	io.AddDevice(&serialport,TOWNSIO_COM1_INT_CONTROL);
-	io.AddDevice(&serialport,TOWNSIO_COM1_TIMER_COUNT);
-	io.AddDevice(&serialport,TOWNSIO_COM1_COM2_TIMER_CONTROL);
-
-	io.AddDevice(&serialport,TOWNSIO_COM2_STATUS_COMMAND);
-	io.AddDevice(&serialport,TOWNSIO_COM2_DATA);
-	io.AddDevice(&serialport,TOWNSIO_COM2_STATUS2);
-	io.AddDevice(&serialport,TOWNSIO_COM2_INT_REASON);
-	io.AddDevice(&serialport,TOWNSIO_COM2_INT_CONTROL);
-	io.AddDevice(&serialport,TOWNSIO_COM2_TIMER_COUNT);
-
-	io.AddDevice(&serialport,TOWNSIO_COM3_STATUS_COMMAND);
-	io.AddDevice(&serialport,TOWNSIO_COM3_DATA);
-	io.AddDevice(&serialport,TOWNSIO_COM3_STATUS2);
-	io.AddDevice(&serialport,TOWNSIO_COM3_INT_REASON);
-	io.AddDevice(&serialport,TOWNSIO_COM3_INT_CONTROL);
-	io.AddDevice(&serialport,TOWNSIO_COM3_TIMER_COUNT);
-	io.AddDevice(&serialport,TOWNSIO_COM3_COM4_TIMER_CONTROL);
-
-	io.AddDevice(&serialport,TOWNSIO_COM4_STATUS_COMMAND);
-	io.AddDevice(&serialport,TOWNSIO_COM4_DATA);
-	io.AddDevice(&serialport,TOWNSIO_COM4_STATUS2);
-	io.AddDevice(&serialport,TOWNSIO_COM4_INT_REASON);
-	io.AddDevice(&serialport,TOWNSIO_COM4_INT_CONTROL);
-	io.AddDevice(&serialport,TOWNSIO_COM4_TIMER_COUNT);
-
-	io.AddDevice(&serialport,TOWNSIO_COM1_4_INT_SOURCE);
-
-
-	io.AddDevice(&vndrv,TOWNSIO_VNDRV_APICHECK);//       0x2F10,
-	io.AddDevice(&vndrv,TOWNSIO_VNDRV_ENABLE);//         0x2F12,
-	io.AddDevice(&vndrv,TOWNSIO_VNDRV_COMMAND);//        0x2F14,
-	io.AddDevice(&vndrv,TOWNSIO_VNDRV_AUXCOMMAND);//     0x2F18,
-
-	io.AddDevice(&tgdrv,TOWNSIO_VM_TGDRV);
-
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_BANK);//         0x510, // [2] pp.832
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_DMASTATUS);//    0x511, // [2] pp.832
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_DMACOUNT_LOW);// 0x512, // [2] pp.833
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_DMACOUNT_HIGH);//0x513, // [2] pp.833
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_DMAADDR_LOW);//  0x514, // [2] pp.834
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_DMAADDR_MIDLOW);//0x515, // [2] pp.834
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_DMAADDR_MIDHIGH);//0x516, // [2] pp.834
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_DMAADDR_HIGH);// 0x517, // [2] pp.834
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_CLOCK);//0x518, // [2] pp.834
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_MODE);//         0x519, // [2] pp.835
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_SYSCONTROL);//   0x51A, // [2] pp.836
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_BUFFCONTROL);//  0x51B, // [2] pp.837
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_REC_PLAYBACK);// 0x51C, // [2] pp.838
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_REC_PEAK_MON);// 0x51D, // [2] pp.839
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_DATA_LOW);//     0x51E, // [2] pp.840
-	io.AddDevice(&highResPCM,TOWNSIO_HIGHRESPCM_DATA_HIGH);//    0x51F, // [2] pp.840
-
-
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1_DATREG1); //0x0E50,         // MIDI card(MT-402 or 403) No.1 Out port 1 datReg1 (from Linux source)
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1_CMDREG1); //0x0E51,         // MIDI card(MT-402 or 403) No.1 cmdReg1 (Linux source)
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1_DATREG2); //0x0E54,         // MIDI card(MT-402 or 403) No.1
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1_CMDREG2); //0x0E55,         // MIDI card(MT-402 or 403) No.1
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1_FIFODAT); //0x0E52,         // MIDI card(MT-402 or 403) No.1
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1_FIFOREG); //0x0E53,         // MIDI card(MT-402 or 403) No.1
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD2_DATREG1); //0x0E58,         // MIDI card 2
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD2_CMDREG1); //0x0E59,         // MIDI card 2
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD2_DATREG2); //0x0E5C,         // MIDI card 2
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD2_CMDREG2); //0x0E5D,         // MIDI card 2
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD2_FIFODAT); //0x0E5A,         // MIDI card 2
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD2_FIFOREG); //0x0E5B,         // MIDI card 2
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3EF_DATREG1); //0x0E60,       // MIDI card 3 [E][F] according to Linux midi.c
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3EF_CMDREG1); //0x0E61,       // MIDI card 3 [E][F]
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3EF_DATREG2); //0x0E64,       // MIDI card 3 [E][F] according to Linux midi.c
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3EF_CMDREG2); //0x0E65,       // MIDI card 3 [E][F]
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3EF_FIFODAT); //0x0E62,       // MIDI card 3 [E][F] according to Linux midi.c
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3EF_FIFOREG); //0x0E63,       // MIDI card 3 [E][F]
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3GH_DATREG1); //0x0E68,       // MIDI card 3 [G][H] according to Linux midi.c
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3GH_CMDREG1); //0x0E69,       // MIDI card 3 [G][H]
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3GH_DATREG2); //0x0E6C,       // MIDI card 3 [G][H] according to Linux midi.c
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3GH_CMDREG2); //0x0E6D,       // MIDI card 3 [G][H]
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3GH_FIFODAT); //0x0E6A,       // MIDI card 3 [G][H] according to Linux midi.c
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD3GH_FIFORET); //0x0E6B,       // MIDI card 3 [G][H]
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1GEN2_DATREG1); //0x04A8,     // 2nd Gen MIDI-1 according to Linux midi.c
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1GEN2_CMDREG1); //0x04A9,     // 2nd Gen MIDI-1
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1GEN2_DATREG2); //0x04AC,     // 2nd Gen MIDI-1 according to Linux midi.c
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1GEN2_CMDREG2); //0x04AD,     // 2nd Gen MIDI-1
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1GEN2_FIFODAT); //0x04AA,     // 2nd Gen MIDI-1 according to Linux midi.c
-	io.AddDevice(&midi,TOWNSIO_MIDI_CARD1GEN2_FIFOREG); //0x04AB,     // 2nd Gen MIDI-1
-	io.AddDevice(&midi,TOWNSIO_MIDI_INT_MASK_SEND); //0x0E70,    // MIDI SEND interrupt MASK
-	io.AddDevice(&midi,TOWNSIO_MIDI_INT_MASK_RECEIVE); //0x0E71, // MIDI RECEIVE interrupt MASK
-	io.AddDevice(&midi,TOWNSIO_MIDI_INT_MASK_SEND_FMT401GEN2); //0x4A0, // MIDI INT Mask for FMT-401 Second Gen (according to Linux midi.c)
-	io.AddDevice(&midi,TOWNSIO_MIDI_INT_MASK_RECEIVE_FMT401GEN2); //0x4A1, // MIDI INT Mask for FMT-401 Second Gen (according to Linux midi.c)
-	io.AddDevice(&midi,TOWNSIO_MIDI_TIMER_INT_CTRL_INT_REASON); //0x0E73,
-	io.AddDevice(&midi,TOWNSIO_MIDI_TIMER0_COUNT); //             0x0E74,
-	io.AddDevice(&midi,TOWNSIO_MIDI_TIMER1_COUNT); //             0x0E75,
-	io.AddDevice(&midi,TOWNSIO_MIDI_TIMER2_COUNT); //             0x0E76,
-	io.AddDevice(&midi,TOWNSIO_MIDI_TIMER_CTRL); //               0x0E77,
-
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_TX_STATUS); //	0x7000,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_RX_STATUS); //	0x7001,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_TX_INTEN); // 	0x7002,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_RX_INTEN); // 	0x7003,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_TX_MODE); // 		0x7004,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_RX_MODE); // 		0x7005,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_CONFIG0); // 		0x7006,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_CONFIG1); // 		0x7007,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_BUFFMEMPORT_L); //0x7008,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_BUFFMEMPORT_H); //0x7009,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_TX_START); //		0x700A,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_16COLL); //		0x700B,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_DMAEN); //		0x700C,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_DMABURST); //		0x700D,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_SELF_RX); //		0x700E,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_TRCV_STATUS); //	0x700F,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ROM); // 			0x7010
-
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_TX_STATUS); //	0x7100,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_RX_STATUS); //	0x7101,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_TX_INTEN); // 	0x7102,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_RX_INTEN); // 	0x7103,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_TX_MODE); // 		0x7104,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_RX_MODE); // 		0x7105,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_CONFIG0); // 		0x7106,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_CONFIG1); // 		0x7107,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_BUFFMEMPORT_L); //0x7108,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_BUFFMEMPORT_H); //0x7109,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_TX_START); //		0x710A,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_16COLL); //		0x710B,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_DMAEN); //		0x710C,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_DMABURST); //		0x710D,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_SELF_RX); //		0x710E,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_TRCV_STATUS); //	0x710F,
-	io.AddDevice(&rex3586,TOWNSIO_LAN_REX3586_ALT_ROM); // 			0x7110
-
-	io.AddDevice(&fmt3631,TOWNSIO_FMT_3631_PRESENCE_CHECK); //      0x1100
-	io.AddDevice(&fmt3631,TOWNSIO_FMT_3632_1);              //      0x1101
-	io.AddDevice(&fmt3631,TOWNSIO_FMT_3632_2);              //      0x9100
-	io.AddDevice(&fmt3631,TOWNSIO_FMT_3632_3);              //      0x9104
-
+	std::cout << "[FMTownsCommon] Step 6" << std::endl;
 	baseClassReady=true;
+	std::cout << "[FMTownsCommon] Body done!" << std::endl;
 }
 
 /* static */ int FMTownsCommon::TownsTypeToCPUType(unsigned int townsType)

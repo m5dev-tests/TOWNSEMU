@@ -31,17 +31,24 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 TownsSCSI::SCSIIOThread::SCSIIOThread()
 {
+#ifndef __EMSCRIPTEN__
 	std::thread t(&TownsSCSI::SCSIIOThread::ThreadFunc,this);
 	std::swap(t,thr);
+#endif
 }
 TownsSCSI::SCSIIOThread::~SCSIIOThread()
 {
+#ifndef __EMSCRIPTEN__
+	if(thr.joinable())
 	{
-		std::unique_lock <std::mutex> lock(mutex);
-		cmd=CMD_QUIT;
+		{
+			std::unique_lock <std::mutex> lock(mutex);
+			cmd=CMD_QUIT;
+		}
+		cond.notify_all();
+		thr.join();
 	}
-	cond.notify_all();
-	thr.join();
+#endif
 }
 void TownsSCSI::SCSIIOThread::ThreadFunc(void)
 {
@@ -183,6 +190,7 @@ void TownsSCSI::State::Reset(void)
 
 TownsSCSI::TownsSCSI(class FMTownsCommon *townsPtr) : Device(townsPtr)
 {
+	std::cout << "[scsi] Constructor" << std::endl;
 	this->townsPtr=townsPtr;
 
 	for(auto &n : commandLength)

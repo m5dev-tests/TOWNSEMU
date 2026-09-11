@@ -127,6 +127,7 @@ void TownsCRTC::ScreenModeCache::MakeFMRCompatible(void)
 
 TownsCRTC::TownsCRTC(class FMTownsCommon *ptr,TownsSprite *spritePtr,class FMT3631 *fmt3631) : Device(ptr)
 {
+	std::cout << "[crtc] Constructor" << std::endl;
 	this->townsPtr=ptr;
 	this->spritePtr=spritePtr;
 	this->fmt3631=fmt3631; // May not be usable yet.  Do not use it inside the constructor.

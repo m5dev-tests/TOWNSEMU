@@ -156,6 +156,7 @@ void TownsCDROM::State::ResetMPU(void)
 
 TownsCDROM::TownsCDROM(class FMTownsCommon *townsPtr,class TownsPIC *PICPtr,class TownsDMAC *DMACPtr) : Device(townsPtr)
 {
+	std::cout << "[cdrom] Constructor" << std::endl;
 	this->townsPtr=townsPtr;
 	this->PICPtr=PICPtr;
 	this->DMACPtr=DMACPtr;

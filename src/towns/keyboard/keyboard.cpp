@@ -27,6 +27,7 @@ void TownsKeyboard::State::Reset(void)
 }
 TownsKeyboard::TownsKeyboard(FMTownsCommon *townsPtr,TownsPIC *picPtr) : Device(townsPtr)
 {
+	std::cout << "[keyboard] Constructor" << std::endl;
 	this->townsPtr=townsPtr;
 	this->picPtr=picPtr;
 

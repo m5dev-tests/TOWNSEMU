@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
 #include <time.h>
 #include <string.h>
 #include <emscripten/emscripten.h>
@@ -90,16 +91,17 @@ extern "C" void FsPollOneEvent(void)
 {
 	static bool callbacksSet = false;
 	if (!callbacksSet) {
-		emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, keydown_callback);
-		emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, keyup_callback);
+		emscripten_set_keydown_callback("#canvas", nullptr, EM_TRUE, keydown_callback);
+		emscripten_set_keyup_callback("#canvas", nullptr, EM_TRUE, keyup_callback);
 		callbacksSet = true;
+	}
+	if (glContext > 0) {
+		emscripten_webgl_make_context_current(glContext);
 	}
 }
 
 void FsOpenWindow(const FsOpenWindowOption &opt)
 {
-	FsPollOneEvent();
-
 	EmscriptenWebGLContextAttributes attr;
 	emscripten_webgl_init_context_attributes(&attr);
 	attr.alpha = EM_TRUE;
@@ -107,13 +109,15 @@ void FsOpenWindow(const FsOpenWindowOption &opt)
 	attr.stencil = EM_FALSE;
 	attr.antialias = EM_TRUE;
 
-	glContext = emscripten_webgl_create_context("#canvas", &attr);
+	glContext = emscripten_webgl_create_context("#offscreen", &attr);
 	if (glContext <= 0) {
 		glContext = emscripten_webgl_create_context(0, &attr);
 	}
 	if (glContext > 0) {
 		emscripten_webgl_make_context_current(glContext);
 	}
+
+	FsPollOneEvent();
 
 	if (fsOpenGLInitializationCallBack) {
 		(*fsOpenGLInitializationCallBack)(fsOpenGLInitializationCallBackParam);
