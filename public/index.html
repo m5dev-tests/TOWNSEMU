@@ -105,6 +105,10 @@
         }
 
         function handleISOFile(file) {
+            if (typeof FS === 'undefined') {
+                console.error('FS not available yet!');
+                return;
+            }
             if (!file) return;
             var status = document.getElementById('status');
             if (status) status.innerText = "Reading ISO file: " + file.name + "...";
@@ -115,11 +119,11 @@
                     var arrayBuffer = e.target.result;
                     var data = new Uint8Array(arrayBuffer);
 
-                    if (typeof Module !== 'undefined' && Module.FS) {
+                    if (typeof FS !== 'undefined') {
                         try {
-                            Module.FS.mkdir('/cd');
+                            FS.mkdir('/cd');
                         } catch(err) {}
-                        Module.FS.writeFile('/cd/game.iso', data);
+                        FS.writeFile('/cd/game.iso', data);
 
                         if (status) status.innerText = "ISO written to /cd/game.iso. Restarting VM with CD...";
 
@@ -129,7 +133,7 @@
                             if (status) status.innerText = "Error: _tsugaru_restart_with_cd not exported";
                         }
                     } else {
-                        if (status) status.innerText = "Error: Module.FS not available";
+                        if (status) status.innerText = "Error: FS not available";
                     }
                 } catch(err) {
                     console.error("Error processing ISO file:", err);
